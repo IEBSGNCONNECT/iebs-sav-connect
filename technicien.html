@@ -565,6 +565,11 @@ function reportHtml(i){
       <div class="report-photos">${(i.rapport.photos||[]).map(p=>`<div class="ph"><img src="${p}"></div>`).join("")}</div>
       ${i.rapport.signature ? `<div class="k" style="margin-top:12px;">Signature</div><div style="border:1px solid var(--steel-light);border-radius:6px;padding:8px;background:#fff;max-width:220px;"><img src="${i.rapport.signature}" style="width:100%;"></div>` : ''}
     ` : ''}
+    ${i.confirmationAgence ? `
+      <div class="k" style="margin-top:14px;">Confirmation de l'agence (${fmtDate(i.confirmationAgence.date)})</div>
+      <div class="report-text">${i.confirmationAgence.texte}</div>
+    ` : ''}
+    ${i.validationDG ? `<div class="k" style="margin-top:14px;">Validation Direction Générale</div><div class="report-text" style="color:var(--success);font-weight:600;">✓ Validé le ${fmtDate(i.validationDG.date)}</div>` : ''}
   `;
 }
 function viewReportModal(i){
