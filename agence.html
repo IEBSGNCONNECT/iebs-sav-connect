@@ -616,6 +616,7 @@ function reportHtml(i){
       <div class="k" style="margin-top:14px;">Confirmation de l'agence (${fmtDate(i.confirmationAgence.date)})</div>
       <div class="report-text">${i.confirmationAgence.texte}</div>
     ` : ''}
+    ${i.validationDG ? `<div class="k" style="margin-top:14px;">Validation Direction Générale</div><div class="report-text" style="color:var(--success);font-weight:600;">✓ Validé le ${fmtDate(i.validationDG.date)}</div>` : ''}
   `;
 }
 function viewReportModal(i){
