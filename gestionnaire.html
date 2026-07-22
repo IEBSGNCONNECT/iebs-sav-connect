@@ -377,7 +377,7 @@ function openModal(html){
   document.getElementById('modalBox').innerHTML = html;
   document.getElementById('modalOverlay').classList.add('show');
 }
-function closeModal(){ document.getElementById('modalOverlay').classList.remove('show'); tempUploadBase64 = null; }
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('show'); tempUploads = {}; }
 
 /* ---------------------- AUTH ---------------------- */
 function toggleSetupForm(showSetup){
@@ -577,7 +577,7 @@ function rulesBannerHtml(){
 function rerenderCurrentTab(){ switchGestTab(currentTab, true); }
 
 /* ---------------------- IMAGE HANDLING (stored as compressed base64 directly in Firestore, no Storage needed) ---------------------- */
-let tempUploadBase64 = null;
+let tempUploads = {};
 function compressImageToDataURL(file, maxDim=340, quality=0.75){
   return new Promise((resolve,reject)=>{
     const reader = new FileReader();
@@ -599,18 +599,19 @@ function compressImageToDataURL(file, maxDim=340, quality=0.75){
     reader.readAsDataURL(file);
   });
 }
-async function handleFileSelect(e, previewId, isLogo){
+async function handleFileSelect(e, previewId, isLogo, key){
+  key = key || 'default';
   const f = e.target.files[0];
   if(!f) return;
   const box = document.getElementById(previewId);
   box.textContent = '…';
   try{
-    tempUploadBase64 = await compressImageToDataURL(f);
+    tempUploads[key] = await compressImageToDataURL(f);
     box.className = isLogo ? 'preview-box logo-box' : 'preview-box';
-    box.innerHTML = `<img src="${tempUploadBase64}">`;
+    box.innerHTML = `<img src="${tempUploads[key]}">`;
   }catch(err){
     box.textContent = 'Erreur';
-    tempUploadBase64 = null;
+    tempUploads[key] = null;
   }
 }
 async function createLoginAccount(email, password){
@@ -794,10 +795,18 @@ function renderGestPros(){
         <div class="item-sub">${p.specialite||''} · ${p.tel||''} · identifiant : ${p.username}</div>
       </div>
       <span class="badge badge-blue">${count} intervention(s)</span>
+      ${p.carteProBase64 ? `<button class="btn btn-outline btn-sm" onclick='viewCarteProModal(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Voir la carte pro</button>` : ''}
       <button class="btn btn-outline btn-sm" onclick="openResetPasswordModal('pro','${p.id}','${p.nom}')">Réinitialiser le mot de passe</button>
     </div>`;
   }).join("");
   return `<div class="section-title">Techniciens <button class="btn btn-primary btn-sm" onclick="openAddProModal()">+ Nouveau technicien</button></div><div class="card-list">${DB.pros.length?rows:`<div class="empty-state">Aucun technicien pour l'instant.</div>`}</div>`;
+}
+function viewCarteProModal(p){
+  openModal(`
+    <h3>Carte professionnelle</h3>
+    <div class="modal-sub">${p.nom}</div>
+    <div style="border:1px solid var(--steel-light);border-radius:8px;overflow:hidden;"><img src="${p.carteProBase64}" style="width:100%;display:block;"></div>
+    <div class="modal-close-row"><button class="btn btn-primary" onclick="closeModal()">Fermer</button></div>`);
 }
 
 /* ---------------------- DOCUMENTS (visibles par la Direction Générale du client concerné) ---------------------- */
@@ -887,7 +896,7 @@ async function deleteDocument(docId){
 
 /* ---------------------- MODALS: create entreprise / agence / pro ---------------------- */
 function openAddEntrepriseModal(){
-  tempUploadBase64 = null;
+  tempUploads = {};
   openModal(`
     <h3>Nouveau client</h3>
     <div class="modal-sub">Créer une entreprise cliente</div>
@@ -896,7 +905,7 @@ function openAddEntrepriseModal(){
     <label>Logo de l'entreprise (optionnel)</label>
     <div class="upload-row">
       <div class="preview-box logo-box" id="newEntLogoPreview">—</div>
-      <input type="file" accept="image/*" onchange="handleFileSelect(event,'newEntLogoPreview',true)">
+      <input type="file" accept="image/*" onchange="handleFileSelect(event,'newEntLogoPreview',true,'logo')">
     </div>
     <label>Identifiant Direction Générale</label>
     <input type="text" id="newEntDgUser" placeholder="Ex : big-dg">
@@ -920,7 +929,7 @@ async function submitAddEntreprise(){
   }
   try{
     const dgAuthUid = await createLoginAccount(dgUser + EMAIL_SUFFIX_DG, dgPass);
-    await addDoc(collection(db,'entreprises'), { nom, logoBase64:tempUploadBase64, dgUsername:dgUser, dgAuthUid, createdAt: serverTimestamp() });
+    await addDoc(collection(db,'entreprises'), { nom, logoBase64:tempUploads.logo||null, dgUsername:dgUser, dgAuthUid, createdAt: serverTimestamp() });
     closeModal();
     switchGestTab('clients');
   }catch(err){
@@ -930,7 +939,7 @@ async function submitAddEntreprise(){
 }
 
 function openAddAgenceModal(entId){
-  tempUploadBase64 = null;
+  tempUploads = {};
   const ent = findEnt(entId);
   openModal(`
     <h3>Nouvelle agence</h3>
@@ -978,7 +987,7 @@ async function submitAddAgence(entId){
 }
 
 function openAddProModal(){
-  tempUploadBase64 = null;
+  tempUploads = {};
   openModal(`
     <h3>Nouveau technicien</h3>
     <label>Nom complet</label>
@@ -986,7 +995,12 @@ function openAddProModal(){
     <label>Photo (optionnel)</label>
     <div class="upload-row">
       <div class="preview-box" id="newProPhotoPreview">—</div>
-      <input type="file" accept="image/*" onchange="handleFileSelect(event,'newProPhotoPreview',false)">
+      <input type="file" accept="image/*" onchange="handleFileSelect(event,'newProPhotoPreview',false,'photo')">
+    </div>
+    <label>Carte professionnelle (optionnel)</label>
+    <div class="upload-row">
+      <div class="preview-box logo-box" id="newProCartePreview">—</div>
+      <input type="file" accept="image/*" capture="environment" onchange="handleFileSelect(event,'newProCartePreview',true,'carte')">
     </div>
     <label>Spécialité</label>
     <input type="text" id="newProSpec" placeholder="Ex : Plomberie">
@@ -1016,7 +1030,7 @@ async function submitAddPro(){
   }
   try{
     const authUid = await createLoginAccount(username + EMAIL_SUFFIX_PRO, password);
-    await addDoc(collection(db,'pros'), { nom, specialite, tel, username, authUid, photoBase64:tempUploadBase64, createdAt: serverTimestamp() });
+    await addDoc(collection(db,'pros'), { nom, specialite, tel, username, authUid, photoBase64:tempUploads.photo||null, carteProBase64:tempUploads.carte||null, createdAt: serverTimestamp() });
     closeModal();
     switchGestTab('pros');
   }catch(err){
@@ -1201,7 +1215,7 @@ Object.assign(window, {
   openResetPasswordModal, submitResetPassword,
   openAddDocumentModal, handleDocPageUpload, submitAddDocument, viewDocumentModal, deleteDocument,
   openFactureModal, submitFacture,
-  viewReportModal, printRapport, handleFileSelect
+  viewReportModal, printRapport, handleFileSelect, viewCarteProModal
 });
 
 document.querySelectorAll('.js-logo-src').forEach(img=>{ img.src = LOGO; });
