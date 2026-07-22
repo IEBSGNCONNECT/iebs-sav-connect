@@ -770,6 +770,7 @@ function renderGestRapports(){
         <div class="item-sub">${isFactured ? `${i.facture.numero} · ${fmtGNF(i.facture.montant)}` : 'Rapport reçu le '+fmtDate(i.rapport.date)}</div>
       </div>
       <div class="item-actions">
+        ${i.validationDG ? `<span class="badge badge-green">✓ Validé DG</span>` : ''}
         <button class="btn btn-outline btn-sm" onclick="viewReportModal('${i.id}')">Voir rapport</button>
         ${!isFactured ? `<button class="btn btn-success btn-sm" onclick="openFactureModal('${i.id}')">Émettre la facture</button>` : statusBadge('facturee')}
       </div>
@@ -1110,6 +1111,7 @@ function reportHtml(i){
       <div class="k" style="margin-top:14px;">Confirmation de l'agence (${fmtDate(i.confirmationAgence.date)})</div>
       <div class="report-text">${i.confirmationAgence.texte}</div>
     ` : ''}
+    ${i.validationDG ? `<div class="k" style="margin-top:14px;">Validation Direction Générale</div><div class="report-text" style="color:var(--success);font-weight:600;">✓ Validé le ${fmtDate(i.validationDG.date)}</div>` : ''}
     ${i.facture ? `<div class="k" style="margin-top:14px;">Facture</div><div class="report-text">${i.facture.numero} · ${fmtGNF(i.facture.montant)} · émise le ${fmtDate(i.facture.date)}</div>` : ''}
   `;
 }
